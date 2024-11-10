@@ -1,7 +1,9 @@
+Flask
+Flask-CORS
+httpx
 torch
-transformers
-faiss-cpu
-fastapi
-uvicorn
+torchvision
+Pillow
 langchain
-requests
+langdetect
+groq
