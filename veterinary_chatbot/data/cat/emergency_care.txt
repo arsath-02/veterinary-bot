@@ -1,0 +1,2 @@
+Similar to dogs: Choking, poisoning, severe injuries, heatstroke, electric shock.
+Cat-Specific: Difficulty urinating, severe respiratory distress.

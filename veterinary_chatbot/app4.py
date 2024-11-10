@@ -1,0 +1,142 @@
+import os
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import httpx
+import time
+import torch
+from torchvision import models, transforms
+from groq import Groq
+from PIL import Image
+import io
+from langchain.memory import ConversationBufferMemory
+from langchain.prompts import PromptTemplate
+
+
+# Initialize Flask app and CORS
+app = Flask(__name__)
+CORS(app)
+
+# Set the API key for Groq client
+api_key = "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"
+if not api_key:
+    raise ValueError("API Key for Groq is not set in the environment variables.")
+
+# Initialize Groq client
+client = Groq(api_key=api_key)
+
+# Initialize LangChain Memory
+memory = ConversationBufferMemory()
+
+# Define the prompt template
+prompt_template = PromptTemplate(
+    input_variables=["species", "history", "user_query"],
+    template="""
+    You are a veterinary AI assistant designed to provide species-specific advice based on previous conversations.
+    Species: {species}
+    History: {history}
+    User Query: {user_query}
+    """
+)
+
+# Load a pretrained ResNet model
+resnet_model = models.resnet50(pretrained=True)
+resnet_model.eval()
+
+# Define image preprocessing pipeline
+preprocess = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
+
+# Veterinary bot function to handle Groq response with memory and image analysis
+def veterinary_bot(message, species="general", image_analysis=None):
+    # Load conversation memory
+    memory_context = memory.load_memory_variables(inputs={"user_query": message})
+    
+    # Build prompt with image analysis if provided
+    prompt = prompt_template.format(
+        species=species,
+        history=memory_context['history'],
+        user_query=message
+    )
+    if image_analysis:
+        prompt += f"\nImage Analysis: {image_analysis}"
+    
+    result = ''
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            completion = client.chat.completions.create(
+                model="llama3-70b-8192",
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": message}
+                ],
+                temperature=0.7,
+                max_tokens=512,
+                top_p=1,
+                stream=True,
+                stop=None,
+            )
+            for chunk in completion:
+                result += chunk.choices[0].delta.content or ""
+            break
+        except httpx.RemoteProtocolError as err:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            return "Unable to process the request at this time. Please try again later."
+        except httpx.RequestError as err:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            return "There was an error reaching the server. Please check your connection and try again."
+
+    # Save response to memory
+    memory.save_context({"user_query": message}, {"response": result.strip()})
+    
+    return result.strip()
+
+# Function to perform image recognition using ResNet
+def classify_image(image):
+    # Preprocess the image
+    input_tensor = preprocess(image)
+    input_batch = input_tensor.unsqueeze(0)  # Create a mini-batch as expected by the model
+
+    # Move tensor to appropriate device if using GPU
+    with torch.no_grad():
+        output = resnet_model(input_batch)
+    
+    # Get the predicted class (index of max value)
+    _, predicted_idx = torch.max(output, 1)
+    return predicted_idx.item()
+
+# Combined endpoint to handle veterinary chat with optional image analysis
+@app.route('/veterinary-assist', methods=['POST'])
+def veterinary_assist():
+    data = request.form if 'image' in request.files else request.json
+    user_message = data.get("message", "Please provide more information on the analysis result.")
+    species = data.get("species", "general")
+
+    image_analysis = None
+    if 'image' in request.files:
+        # Process the image and perform recognition if an image is provided
+        image_file = request.files['image']
+        image = Image.open(image_file).convert("RGB")
+        prediction = classify_image(image)
+        image_analysis = f"Predicted class index by ResNet model: {prediction}"
+
+    # Generate response using both message and image analysis (if provided)
+    response = veterinary_bot(user_message, species=species, image_analysis=image_analysis)
+    return jsonify({"analysis": image_analysis, "response": response})
+
+# Health check endpoint
+@app.route("/health", methods=["GET"])
+def health_check():
+    return jsonify({"status": "healthy"})
+
+# Run the Flask app
+if __name__ == "__main__":
+    app.run(port=8000, debug=True)

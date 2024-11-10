@@ -1,0 +1,7 @@
+torch
+transformers
+faiss-cpu
+fastapi
+uvicorn
+langchain
+requests
