@@ -3,7 +3,9 @@ from flask_cors import CORS
 import httpx
 import time
 import torch
-from torchvision import models, transforms
+from efficientnet_lite_pytorch import EfficientNet
+
+from torchvision import transforms
 from groq import Groq
 from PIL import Image
 import os
@@ -16,7 +18,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Set the API key for Groq client
-api_key ="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"
+api_key = "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"
 if not api_key:
     raise ValueError("API Key for Groq is not set in the environment variables.")
 
@@ -39,11 +41,11 @@ prompt_template = PromptTemplate(
     """
 )
 
-# Load a pretrained ResNet model
-resnet_model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
-resnet_model.eval()
+# Load EfficientNet-Lite0 model
+efficientnet_model = EfficientNet.from_name('efficientnet-lite0')  # Updated this line
+efficientnet_model.eval()
 
-# Define image preprocessing pipeline
+# Define image preprocessing pipeline for EfficientNet-Lite0
 preprocess = transforms.Compose([
     transforms.Resize(256),
     transforms.CenterCrop(224),
@@ -113,7 +115,7 @@ def veterinary_assist():
         image_file = request.files['image']
         image = Image.open(image_file).convert("RGB")
         prediction = classify_image(image)
-        image_analysis = f"Predicted class index by ResNet model: {prediction}"
+        image_analysis = f"Predicted class index by EfficientNet-Lite0 model: {prediction}"
 
     # Generate response using both message and image analysis (if provided)
     response = veterinary_bot(user_message, species=species, image_analysis=image_analysis)
@@ -126,7 +128,7 @@ def classify_image(image):
 
     # Move tensor to appropriate device if using GPU
     with torch.no_grad():
-        output = resnet_model(input_batch)
+        output = efficientnet_model(input_batch)
     
     # Get the predicted class (index of max value)
     _, predicted_idx = torch.max(output, 1)
