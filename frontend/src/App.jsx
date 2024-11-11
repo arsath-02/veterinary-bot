@@ -11,7 +11,7 @@ function ChatInterface() {
   const [message, setMessage] = useState('');
   const [species, setSpecies] = useState('general');
   const [image, setImage] = useState(null);
-  const [isTyping, setIsTyping] = useState(false); // Track if bot is typing
+  const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef(null);
 
   // Typing effect: gradually reveal the bot's message
@@ -53,15 +53,12 @@ function ChatInterface() {
     try {
       setIsTyping(true); // Show bot typing indicator
 
-      // Simulate a delay before bot responds (mimicking real typing)
       const res = await axios.post('https://apparent-wolf-obviously.ngrok-free.app/veterinary-assist', formData);
 
-      // Wait for bot response to show after a delay
       if (res.data.response) {
-        // Add a placeholder for bot typing indicator
         setMessages((prevMessages) => [
           ...prevMessages,
-          { type: 'bot', text: '' }, // Empty message to simulate typing
+          { type: 'bot', text: '' },
         ]);
         addTypingEffect(res.data.response, () => {
           setMessages((prevMessages) => [
@@ -93,7 +90,7 @@ function ChatInterface() {
         ]);
       }
     } finally {
-      setIsTyping(false); // Hide bot typing indicator once the request is complete
+      setIsTyping(false);
     }
   };
 
@@ -103,9 +100,9 @@ function ChatInterface() {
   }, [messages]);
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col justify-between p-4 justify-center items-center">
-      <div className="w-full max-w-screen-lg bg-white rounded-lg shadow-lg p-6 flex flex-col flex-grow">
-        <h2 className="text-2xl font-bold text-blue-600 text-center mb-4 flex items-center justify-center">
+    <div className="h-screen bg-gray-100 flex flex-col justify-between p-4 md:p-6 lg:p-8">
+      <div className="w-full max-w-screen-md mx-auto bg-white rounded-lg shadow-lg p-4 sm:p-6 md:p-8 flex flex-col flex-grow">
+        <h2 className="text-2xl font-bold text-blue-600 text-center mb-4 flex items-center justify-center text-sm sm:text-base">
           <MdPets className="mr-2" />
           Veterinary AI Assistant
         </h2>
@@ -131,57 +128,61 @@ function ChatInterface() {
         </div>
 
         {/* Input area - fixed at the bottom */}
-        <div className="mb-4">
-          <label className="block text-gray-700">Species:</label>
-          <select
-            value={species}
-            onChange={(e) => setSpecies(e.target.value)}
-            className="w-full p-2 border rounded-md"
-          >
-            <option value="general">General</option>
-            <option value="dog">Dog</option>
-            <option value="cat">Cat</option>
-            <option value="cow">Cow</option>
-            <option value="goat">Goat</option>
-          </select>
-        </div>
-        <div className="flex items-center space-x-2 mb-4">
-          <label className="block text-gray-700 mr-2">Upload Image:</label>
-          <input
-            type="file"
-            onChange={(e) => setImage(e.target.files[0])}
-            className="hidden"
-            id="image-upload"
-            aria-label="Upload image of pet"
-          />
-          <label htmlFor="image-upload" className="cursor-pointer">
-            <AiOutlineCamera className="text-2xl text-blue-500" />
-          </label>
+        <div className="mb-4 space-y-4">
+          <div>
+            <label className="block text-gray-700 text-sm">Species:</label>
+            <select
+              value={species}
+              onChange={(e) => setSpecies(e.target.value)}
+              className="w-full p-2 border rounded-md text-sm"
+            >
+              <option value="general">General</option>
+              <option value="dog">Dog</option>
+              <option value="cat">Cat</option>
+              <option value="cow">Cow</option>
+              <option value="goat">Goat</option>
+            </select>
+          </div>
 
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Ask about your pet's health..."
-            className="flex-1 p-2 border border-gray-300 rounded-lg outline-none"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault(); // Prevents the default behavior (such as new line)
-                handleSendMessage(); // Calls the function to send the message
-              }
-            }}
-            aria-label="Type your message"
-            disabled={isTyping} // Disable input when bot is typing
-          />
+          <div className="flex items-center space-x-4 justify-between sm:space-x-6">
+            <div className="flex items-center space-x-2">
+              <label htmlFor="image-upload" className="cursor-pointer">
+                <AiOutlineCamera className="text-2xl text-blue-500" />
+              </label>
+              <input
+                type="file"
+                onChange={(e) => setImage(e.target.files[0])}
+                className="hidden"
+                id="image-upload"
+                aria-label="Upload image of pet"
+              />
+            </div>
 
-          <button
-            onClick={handleSendMessage}
-            className="p-2 bg-blue-500 rounded-full text-white hover:bg-blue-600"
-            disabled={isTyping} // Disable button when bot is typing
-            aria-label="Send message"
-          >
-            <FiSend />
-          </button>
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Ask about your pet's health..."
+              className="flex-1 p-2 border border-gray-300 rounded-lg outline-none text-sm"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              aria-label="Type your message"
+              disabled={isTyping}
+            />
+
+            <button
+              onClick={handleSendMessage}
+              className="p-2 bg-blue-500 rounded-full text-white hover:bg-blue-600 disabled:bg-gray-300"
+              disabled={isTyping}
+              aria-label="Send message"
+            >
+              <FiSend />
+            </button>
+          </div>
         </div>
       </div>
     </div>
