@@ -79,8 +79,8 @@ function ChatInterface() {
   }, [messages]);
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col justify-between p-4 justify-center items-center">
-      <div className="w-full max-w-screen-lg bg-white rounded-lg shadow-lg p-6 flex flex-col flex-grow">
+    <div className="h-screen bg-gray-100 flex flex-col justify-between p-4 lg:p-6 items-center">
+      <div className="w-full max-w-screen-sm bg-white rounded-lg shadow-lg p-4 flex flex-col flex-grow">
         <h2 className="text-2xl font-bold text-blue-600 text-center mb-4 flex items-center justify-center">
           <MdPets className="mr-2" />
           Veterinary AI Assistant
@@ -121,6 +121,7 @@ function ChatInterface() {
             <option value="goat">Goat</option>
           </select>
         </div>
+
         <div className="flex items-center space-x-2 mb-4">
           <label className="block text-gray-700 mr-2">Upload Image:</label>
           <input
