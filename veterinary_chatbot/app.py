@@ -6,7 +6,7 @@ import torch
 from torchvision import models, transforms
 from groq import Groq
 from PIL import Image
-import io
+import os
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate
 from langdetect import detect
@@ -16,7 +16,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Set the API key for Groq client
-api_key = "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"
+api_key ="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"
 if not api_key:
     raise ValueError("API Key for Groq is not set in the environment variables.")
 
@@ -139,4 +139,5 @@ def health_check():
 
 # Run the Flask app
 if __name__ == "__main__":
-    app.run(port=8000, debug=True)
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host='0.0.0.0', port=port, debug=True)
