@@ -1,8 +1,8 @@
-Flask==2.0.2
-Flask-Cors==3.0.10
-httpx==0.21.0
-torch==1.10.0
+Flask
+Flask-Cors
+httpx
+torch
 efficientnet_lite_pytorch
-Pillow==8.4.0
-langchain==0.0.90
-langdetect==1.0.9
+Pillow
+langchain
+langdetect
