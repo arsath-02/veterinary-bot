@@ -51,7 +51,7 @@ function ChatInterface() {
     if (image) formData.append('image', image);
 
     try {
-      const res = await axios.post('http://127.0.0.1:8000/veterinary-assist', formData);
+      const res = await axios.post('https://apparent-wolf-obviously.ngrok-free.app/veterinary-assist', formData);
 
       // Ensure the response from the server is defined before showing it
       if (res.data.response) {
@@ -115,9 +115,10 @@ function ChatInterface() {
             className="w-full p-2 border rounded-md"
           >
             <option value="general">General</option>
-            <option value="canine">Canine</option>
-            <option value="feline">Feline</option>
-            <option value="avian">Avian</option>
+            <option value="dog">Dog</option>
+            <option value="cat">Cat</option>
+            <option value="cow">Cow</option>
+            <option value="goat">Goat</option>
           </select>
         </div>
         <div className="flex items-center space-x-2 mb-4">
@@ -138,8 +139,14 @@ function ChatInterface() {
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Ask about your pet's health..."
             className="flex-1 p-2 border border-gray-300 rounded-lg outline-none"
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault(); // Prevents the default behavior (such as new line)
+                handleSendMessage(); // Calls the function to send the message
+              }
+            }}
           />
+
           <button
             onClick={handleSendMessage}
             className="p-2 bg-blue-500 rounded-full text-white hover:bg-blue-600"
