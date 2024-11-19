@@ -35,64 +35,58 @@ function ChatInterface() {
     }, 40); // Faster typing speed (40ms per character)
   };
 
-  const handleSendMessage = async () => {
-    if (!message.trim() && !image) return;
+const handleSendMessage = async () => {
+  if (!message.trim() && !image) return;
 
-    // Add user message to the chat immediately
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      { type: 'user', text: message || 'Image uploaded', image: image ? URL.createObjectURL(image) : null },
-    ]);
-    setMessage(''); // Clear message input
+  // Add user message to the chat immediately
+  setMessages((prevMessages) => [
+    ...prevMessages,
+    { type: 'user', text: message || 'Image uploaded', image: image ? URL.createObjectURL(image) : null },
+  ]);
+  setMessage(''); // Clear message input
 
-    const formData = new FormData();
-    formData.append('message', message);
-    formData.append('species', species);
-    if (image) formData.append('image', image);
+  const formData = new FormData();
+  formData.append('message', message);
+  formData.append('species', species);
+  if (image) formData.append('image', image);
 
-    try {
-      setIsTyping(true); // Show bot typing indicator
+  try {
+    setIsTyping(true); // Show bot typing indicator
 
-      const res = await axios.post('https://apparent-wolf-obviously.ngrok-free.app/veterinary-assist', formData);
+    const res = await axios.post('https://apparent-wolf-obviously.ngrok-free.app/veterinary-assist', formData);
 
-      if (res.data.response) {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { type: 'bot', text: '' },
-        ]);
-        addTypingEffect(res.data.response, () => {
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            { type: 'bot', text: res.data.response, image: null },
-          ]);
-        });
-      } else {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { type: 'bot', text: 'Sorry, I could not understand the response.' },
-        ]);
-      }
-    } catch (error) {
-      if (error.response) {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { type: 'bot', text: `Error: ${error.response.data.message || 'Unable to process your request.'}` },
-        ]);
-      } else if (error.request) {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { type: 'bot', text: 'Error connecting to the server.' },
-        ]);
-      } else {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { type: 'bot', text: 'An unexpected error occurred.' },
-        ]);
-      }
-    } finally {
-      setIsTyping(false);
+    if (res.data.response) {
+      // Use addTypingEffect to display the response gradually
+      addTypingEffect(res.data.response, () => {
+        setIsTyping(false); // Typing effect completed
+      });
+    } else {
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { type: 'bot', text: 'Sorry, I could not understand the response.' },
+      ]);
     }
-  };
+  } catch (error) {
+    if (error.response) {
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { type: 'bot', text: `Error: ${error.response.data.message || 'Unable to process your request.'}` },
+      ]);
+    } else if (error.request) {
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { type: 'bot', text: 'Error connecting to the server.' },
+      ]);
+    } else {
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { type: 'bot', text: 'An unexpected error occurred.' },
+      ]);
+    }
+  } finally {
+    setIsTyping(false);
+  }
+};
 
   // Scroll to bottom whenever a new message is added
   useEffect(() => {
