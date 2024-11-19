@@ -4,7 +4,7 @@ import httpx
 import time
 import torch
 from efficientnet_lite_pytorch import EfficientNet
-
+import ngrok 
 from torchvision import transforms
 from groq import Groq
 from PIL import Image
@@ -25,6 +25,8 @@ if not api_key:
 # Initialize Groq client
 client = Groq(api_key=api_key)
 
+ngrok.set_auth_token("2a1iGE4Q5SDAF4mhdAVXeNptwJd_2GBcW2ACMaj2JoAJy8Gtt")
+listener = ngrok.forward("127.0.0.1:5000", authtoken_from_env=True, domain="apparent-wolf-obviously.ngrok-free.app")
 # Initialize LangChain Memory
 memory = ConversationBufferMemory()
 
@@ -38,8 +40,16 @@ prompt_template = PromptTemplate(
     User Query: {user_query} 
     Language: {language} 
     Provide the response in the same language as the user query.
+
+    Additionally, address the following queries if they are relevant:
+    - Is the pet vaccinated?
+    - Does the pet have any known allergies?
+    - Has the pet had any recent medical issues or treatments?
+    - Are there any behavioral changes in the pet?
+    - Is the pet on any medication or special diet?
     """
 )
+
 
 # Load EfficientNet-Lite0 model
 efficientnet_model = EfficientNet.from_name('efficientnet-lite0')  # Updated this line
@@ -53,19 +63,17 @@ preprocess = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-# Veterinary bot function to handle Groq response with memory and image analysis
 def veterinary_bot(message, species="general", image_analysis=None):
-    # Detect the language of the message
-    language = detect(message)
+    language = detect(message) if message else "en"  # Detect language only if there's text input
     
     # Load conversation memory
-    memory_context = memory.load_memory_variables(inputs={"user_query": message})
+    memory_context = memory.load_memory_variables(inputs={"user_query": message or "Image analysis only"})
     
     # Build prompt with image analysis if provided
     prompt = prompt_template.format(
         species=species,
-        history=memory_context['history'],
-        user_query=message,
+        history=memory_context.get('history', ''),
+        user_query=message or "Image analysis only",
         language=language
     )
     if image_analysis:
@@ -79,58 +87,54 @@ def veterinary_bot(message, species="general", image_analysis=None):
                 model="llama3-70b-8192",
                 messages=[{"role": "system", "content": prompt}, {"role": "user", "content": message}],
                 temperature=0.7,
-                max_tokens=512,
+                max_tokens=1024,  # Increased token limit for larger responses
                 top_p=1,
-                stream=True,
+                stream=False,  # Disable streaming to avoid premature response end
                 stop=None,
             )
-            for chunk in completion:
-                if chunk.choices[0].delta.content:
-                    result += chunk.choices[0].delta.content
+            # Correctly accessing the response content
+            result = completion.choices[0].message.content
             break
         except (httpx.RemoteProtocolError, httpx.RequestError) as err:
-            # Retry with exponential backoff on error
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
                 continue
             return "Unable to process the request at this time. Please try again later."
 
-    # Ensure the response is saved to memory only if it is complete
     if result.strip():
-        memory.save_context({"user_query": message}, {"response": result.strip()})
+        memory.save_context({"user_query": message or "Image analysis only"}, {"response": result.strip()})
     
     return result.strip()
 
-# Combined endpoint to handle veterinary chat with optional image analysis
+
+
 @app.route('/veterinary-assist', methods=['POST'])
 def veterinary_assist():
-    # Check if the request contains files or JSON data
     data = request.form if 'image' in request.files else request.json
-    user_message = data.get("message", "Please provide more information on the analysis result.")
+    user_message = data.get("message", "")
     species = data.get("species", "general")
 
     image_analysis = None
     if 'image' in request.files:
-        # Process the image and perform recognition if an image is provided
         image_file = request.files['image']
         image = Image.open(image_file).convert("RGB")
         prediction = classify_image(image)
         image_analysis = f"Predicted class index by EfficientNet-Lite0 model: {prediction}"
 
-    # Generate response using both message and image analysis (if provided)
-    response = veterinary_bot(user_message, species=species, image_analysis=image_analysis)
-    return jsonify({"analysis": image_analysis, "response": response})
+    if user_message or image_analysis:
+        response = veterinary_bot(user_message, species=species, image_analysis=image_analysis)
+        return jsonify({"analysis": image_analysis, "response": response})
+    else:
+        return jsonify({"error": "Please provide a message or an image for analysis."}), 400
+
 
 def classify_image(image):
-    # Preprocess the image
     input_tensor = preprocess(image)
     input_batch = input_tensor.unsqueeze(0)  # Create a mini-batch as expected by the model
 
-    # Move tensor to appropriate device if using GPU
     with torch.no_grad():
         output = efficientnet_model(input_batch)
     
-    # Get the predicted class (index of max value)
     _, predicted_idx = torch.max(output, 1)
     return predicted_idx.item()
 
@@ -141,5 +145,6 @@ def health_check():
 
 # Run the Flask app
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    public_url = ngrok.connect(5000)
+    print(f"Public URL: {public_url}")
+    app.run(host="0.0.0.0", port=5000)
